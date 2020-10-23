@@ -1,46 +1,47 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import './App.css';
-import io from 'socket.io-client'
+import { Terminal } from 'xterm';
+import "xterm/css/xterm.css";
+import io from 'socket.io-client';
+import { FitAddon } from 'xterm-addon-fit';
 
 const socket = io('localhost:30000');
+const shellprompt = '$ ';
 
-function App() {
-  const [isConnected, setIsConnected] = useState(socket.connected);
-  const [lastMessage, setLastMessage] = useState(null);
+function App(props: { initialLine?: string }) {
+  const initialLine = props.initialLine || ""
+  const termElm = useRef(null);
+  let currentLine = "";
+  const terminal = new Terminal({});
+  const fitAddon = new FitAddon();
+  terminal.loadAddon(fitAddon);
+  terminal.onKey(key => {
+    const char = key;
+    // https://github.com/xtermjs/xterm.js/issues/2565
+    if (char.key === "\r") {
+      terminal.writeln("")
+      terminal.write(shellprompt)
+      socket.emit('message', currentLine)
+      currentLine = ""
+    } else {
+      terminal.write(char.key)
+      currentLine += char.key
+    }
+  });
+  socket.on('message', (d: string) => terminal.write(d));
 
   useEffect(() => {
-    socket.on('connect', () => {
-      setIsConnected(true);
-    });
-    socket.on('disconnect', () => {
-      setIsConnected(false);
-    });
-    socket.on('message', (data: any) => {
-      setLastMessage(data);
-    });
-    return () => {
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.off('message');
-    };
-  });
+    terminal.open(termElm.current as any)
+    terminal.write(shellprompt)
 
-  const sendMessage = () => {
-    socket.emit('hello!');
-  }
-
-  const wantInterval = () => {
-    socket.emit('want_interval');
-  }
+    fitAddon.fit();
+  }, [initialLine]);
 
   return (
     <div className="App">
-      <header className="App-header">
-        <p>Connected: { '' + isConnected }</p>
-        <p>Last message: { lastMessage || '-' }</p>
-        <button onClick={ sendMessage }>Say hello!</button>
-        <button onClick={ wantInterval }>Want an Interval</button>
-      </header>
+      <div style={{padding:'10px'}}>
+        <div ref={termElm}></div>
+      </div>
     </div>
   );
 }

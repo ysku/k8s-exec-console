@@ -20,12 +20,17 @@ socketio = SocketIO(app, cors_allowed_origins='*')
 @socketio.on('connect')
 def test_connect():
     print('***** connected *****')
-    emit('message', datetime.utcnow().isoformat())
 
 
 @socketio.on('disconnect')
 def test_disconnect():
     print('client disconnected')
+
+
+@socketio.on('message')
+def handle_message(message):
+    print('handle message')
+    emit('message', message)
 
 
 @socketio.on('hello!')
