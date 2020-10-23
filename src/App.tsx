@@ -1,23 +1,45 @@
-import React from 'react';
-import logo from './logo.svg';
+import React, { useState, useEffect } from 'react';
 import './App.css';
+import io from 'socket.io-client'
+
+const socket = io('localhost:30000');
 
 function App() {
+  const [isConnected, setIsConnected] = useState(socket.connected);
+  const [lastMessage, setLastMessage] = useState(null);
+
+  useEffect(() => {
+    socket.on('connect', () => {
+      setIsConnected(true);
+    });
+    socket.on('disconnect', () => {
+      setIsConnected(false);
+    });
+    socket.on('message', (data: any) => {
+      setLastMessage(data);
+    });
+    return () => {
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('message');
+    };
+  });
+
+  const sendMessage = () => {
+    socket.emit('hello!');
+  }
+
+  const wantInterval = () => {
+    socket.emit('want_interval');
+  }
+
   return (
     <div className="App">
       <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+        <p>Connected: { '' + isConnected }</p>
+        <p>Last message: { lastMessage || '-' }</p>
+        <button onClick={ sendMessage }>Say hello!</button>
+        <button onClick={ wantInterval }>Want an Interval</button>
       </header>
     </div>
   );
