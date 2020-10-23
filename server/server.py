@@ -5,6 +5,11 @@ from flask_socketio import send, emit
 from flask import Flask, render_template
 from flask_cors import CORS
 from flask_socketio import SocketIO
+from kubernetes import config
+from kubernetes.client import Configuration
+from kubernetes.client.api import core_v1_api
+from kubernetes.client.rest import ApiException
+from kubernetes.stream import stream
 
 
 app = Flask(__name__)
@@ -38,4 +43,9 @@ def handle_want_interval():
 
 
 if __name__ == '__main__':
+    config.load_kube_config()
+    c = Configuration()
+    c.assert_hostname = False
+    Configuration.set_default(c)
+    core_v1 = core_v1_api.CoreV1Api()
     socketio.run(app, host='0.0.0.0', debug=True, port=30000)
