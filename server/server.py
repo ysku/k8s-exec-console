@@ -16,6 +16,9 @@ app = Flask(__name__)
 cors = CORS(app,resources={r"/*":{"origins":"*"}})
 socketio = SocketIO(app, cors_allowed_origins='*')
 
+config.load_kube_config()
+core_v1 = core_v1_api.CoreV1Api()
+
 
 @socketio.on('connect')
 def test_connect():
@@ -30,7 +33,24 @@ def test_disconnect():
 @socketio.on('message')
 def handle_message(message):
     print('handle message')
-    emit('message', message)
+    exec_command = [
+        '/bin/bash',
+        '-c',
+        message
+    ]
+    name = 'nginx-f89759699-2tv5w'
+    resp = stream(
+        core_v1.connect_get_namespaced_pod_exec,
+        name,
+        'default',
+        command=exec_command,
+        stderr=True,
+        stdin=False,
+        stdout=True,
+        tty=False,
+    )
+    print("Response: " + resp)
+    emit('message', resp)
 
 
 @socketio.on('hello!')
@@ -48,9 +68,4 @@ def handle_want_interval():
 
 
 if __name__ == '__main__':
-    config.load_kube_config()
-    c = Configuration()
-    c.assert_hostname = False
-    Configuration.set_default(c)
-    core_v1 = core_v1_api.CoreV1Api()
     socketio.run(app, host='0.0.0.0', debug=True, port=30000)

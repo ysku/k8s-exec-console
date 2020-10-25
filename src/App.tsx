@@ -8,27 +8,83 @@ import { FitAddon } from 'xterm-addon-fit';
 const socket = io('localhost:30000');
 const shellprompt = '$ ';
 
+function string2Bin(str: string) {
+  var result = [];
+  for (var i = 0; i < str.length; i++) {
+    result.push(str.charCodeAt(i));
+  }
+  return result;
+}
+
 function App(props: { initialLine?: string }) {
   const initialLine = props.initialLine || ""
   const termElm = useRef(null);
   let currentLine = "";
+  let position = 0;
   const terminal = new Terminal({});
   const fitAddon = new FitAddon();
   terminal.loadAddon(fitAddon);
   terminal.onKey(key => {
+    console.log(key)
+    console.log(`position: ${position}`)
     const char = key;
+    if (char.domEvent.code === "Backspace") {
+      if (currentLine.length > 0) {
+        currentLine = currentLine.slice(0, -1)
+        terminal.write("\b \b")
+      }
+      return
+    }
+    if (char.domEvent.code === "ArrowUp") {
+      // TODO: history
+      console.log("ArrowUp")
+      return
+    }
+    if (char.domEvent.code === "ArrowRight") {
+      if (position < currentLine.length) {
+        position++
+        terminal.write(char.key)
+      } else {
+        // do nothing
+        return
+      }
+    }
+    if (char.domEvent.code === "ArrowLeft") {
+      if (position > 0) {
+        position--
+        terminal.write(char.key)
+      } else {
+        // do nothing
+        return
+      }
+    }
     // https://github.com/xtermjs/xterm.js/issues/2565
-    if (char.key === "\r") {
-      terminal.writeln("")
-      terminal.write(shellprompt)
-      socket.emit('message', currentLine)
+    if (char.domEvent.code === "Enter") {
+      if (currentLine.length > 0) {
+        terminal.writeln("")
+        socket.emit('message', currentLine)
+      } else {
+        terminal.writeln("")
+        terminal.write(shellprompt)
+      }
       currentLine = ""
+      position = 0
     } else {
+      position++
       terminal.write(char.key)
       currentLine += char.key
     }
   });
-  socket.on('message', (d: string) => terminal.write(d));
+  socket.on('message', (d: string) => {
+    console.log(string2Bin(d))
+    if (d.endsWith('\n')) {
+      d = d.slice(0, d.length - 2)
+    }
+    for (const line of d.split('\n')) {
+      terminal.writeln(line)
+    }
+    terminal.write(shellprompt)
+  });
 
   useEffect(() => {
     terminal.open(termElm.current as any)
