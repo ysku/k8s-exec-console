@@ -8,14 +8,6 @@ import { FitAddon } from 'xterm-addon-fit';
 const socket = io('localhost:30000');
 const shellprompt = '$ ';
 
-function string2Bin(str: string) {
-  var result = [];
-  for (var i = 0; i < str.length; i++) {
-    result.push(str.charCodeAt(i));
-  }
-  return result;
-}
-
 function App(props: { initialLine?: string }) {
   const initialLine = props.initialLine || ""
   const termElm = useRef(null);
@@ -25,8 +17,6 @@ function App(props: { initialLine?: string }) {
   const fitAddon = new FitAddon();
   terminal.loadAddon(fitAddon);
   terminal.onKey(key => {
-    console.log(key)
-    console.log(`position: ${position}`)
     const char = key;
     if (char.domEvent.code === "Backspace") {
       if (currentLine.length > 0) {
@@ -37,7 +27,6 @@ function App(props: { initialLine?: string }) {
     }
     if (char.domEvent.code === "ArrowUp") {
       // TODO: history
-      console.log("ArrowUp")
       return
     }
     if (char.domEvent.code === "ArrowRight") {
@@ -76,9 +65,8 @@ function App(props: { initialLine?: string }) {
     }
   });
   socket.on('message', (d: string) => {
-    console.log(string2Bin(d))
     if (d.endsWith('\n')) {
-      d = d.slice(0, d.length - 2)
+      d = d.slice(0, d.length - 1)
     }
     for (const line of d.split('\n')) {
       terminal.writeln(line)
@@ -95,8 +83,10 @@ function App(props: { initialLine?: string }) {
 
   return (
     <div className="App">
-      <div style={{padding:'10px'}}>
-        <div ref={termElm}></div>
+      <div className="container">
+        <div style={{padding:'10px'}}>
+          <div ref={termElm}></div>
+        </div>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import os
 import time
 from datetime import datetime
 
@@ -11,6 +12,10 @@ from kubernetes.client.api import core_v1_api
 from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
 
+pod_name = os.environ.get('POD_NAME')
+if not pod_name:
+    raise RuntimeError(f"POD_NAME is required")
+
 
 app = Flask(__name__)
 cors = CORS(app,resources={r"/*":{"origins":"*"}})
@@ -22,7 +27,7 @@ core_v1 = core_v1_api.CoreV1Api()
 
 @socketio.on('connect')
 def test_connect():
-    print('***** connected *****')
+    print('connected')
 
 
 @socketio.on('disconnect')
@@ -32,7 +37,7 @@ def test_disconnect():
 
 @socketio.on('message')
 def handle_message(message):
-    print('handle message')
+    print(f'handle message, {message}')
     exec_command = [
         '/bin/bash',
         '-c',
@@ -51,20 +56,6 @@ def handle_message(message):
     )
     print("Response: " + resp)
     emit('message', resp)
-
-
-@socketio.on('hello!')
-def handle_hello(*args):
-    print('***** handle_hello *****')
-    print(args)
-    emit('message', datetime.utcnow().isoformat())
-
-
-@socketio.on('want_interval')
-def handle_want_interval():
-    while True:
-        time.sleep(1)
-        emit('message', f'interval: {datetime.utcnow().isoformat()}')
 
 
 if __name__ == '__main__':
